@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>單字探險卡 · 閃卡朗讀工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FFF8ED;
+    --cream-2: #FFF1DA;
+    --ink: #4A3F35;
+    --ink-soft: #8A7B6C;
+    --coral: #FF6B5B;
+    --coral-deep: #E8503F;
+    --mint: #3FBFAE;
+    --sun: #FFC24B;
+    --lav: #8C7AE6;
+    --sky: #4FA8D8;
+    --card-radius: 28px;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--cream);
+    font-family: 'Nunito', sans-serif;
+    color: var(--ink);
+  }
+  body {
+    min-height: 100%;
+    background-image:
+      radial-gradient(circle at 8% 12%, rgba(255,194,75,0.28) 0, transparent 42%),
+      radial-gradient(circle at 92% 18%, rgba(79,168,216,0.22) 0, transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(255,107,91,0.18) 0, transparent 45%),
+      radial-gradient(circle at 10% 88%, rgba(63,191,174,0.20) 0, transparent 42%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 40px;
+  }
+  .stage { width: 100%; max-width: 560px; }
+
+  /* Header */
+  .app-title {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(26px, 5vw, 34px);
+    color: var(--coral-deep);
+    text-align: center;
+    margin: 4px 0 2px;
+    letter-spacing: 0.2px;
+  }
+  .app-sub {
+    text-align: center;
+    color: var(--ink-soft);
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  /* Progress */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .progress-track {
+    flex: 1;
+    height: 14px;
+    border-radius: 999px;
+    background: #FFFFFF;
+    box-shadow: inset 0 2px 4px rgba(74,63,53,0.12);
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--sun), var(--coral));
+    transition: width 0.45s cubic-bezier(.4,1.4,.6,1);
+  }
+  .progress-label {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+    min-width: 54px;
+    text-align: right;
+  }
+  .mastered-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #FFFFFF;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--mint);
+    box-shadow: 0 3px 10px rgba(74,63,53,0.08);
+    margin: 0 auto 18px;
+    width: fit-content;
+  }
+
+  /* Card */
+  .card-wrap {
+    perspective: 1600px;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    max-height: 62vh;
+    margin: 0 auto 22px;
+  }
+  .card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(.5,.1,.2,1.15);
+    cursor: pointer;
+  }
+  .card.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--card-radius);
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 26px 24px 22px;
+    box-shadow: 0 14px 0 rgba(74,63,53,0.10), 0 20px 34px rgba(74,63,53,0.16);
+    border: 3px solid rgba(255,255,255,0.6);
+  }
+  .card-front {
+    background: linear-gradient(155deg, var(--face-a), var(--face-b));
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .card-back {
+    background: linear-gradient(155deg, var(--face-b), var(--face-a));
+    transform: rotateY(180deg);
+    justify-content: flex-start;
+  }
+
+  .card-index-badge {
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    background: rgba(255,255,255,0.55);
+    color: var(--ink);
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+  .mastered-badge {
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    background: var(--mint);
+    color: white;
+    font-size: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(63,191,174,0.4);
+  }
+
+  .front-word {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(32px, 8vw, 46px);
+    color: white;
+    text-shadow: 0 3px 0 rgba(0,0,0,0.12);
+    margin-bottom: 10px;
+    word-break: break-word;
+  }
+  .front-pos {
+    background: rgba(255,255,255,0.35);
+    color: white;
+    font-weight: 800;
+    font-size: 13px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  .front-hint {
+    color: rgba(255,255,255,0.85);
+    font-weight: 700;
+    font-size: 13px;
+    margin-top: 18px;
+  }
+
+  .speak-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    color: var(--coral-deep);
+    border: none;
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    box-shadow: 0 4px 0 rgba(74,63,53,0.15);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .speak-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(74,63,53,0.15);
+  }
+  .speak-btn.speaking { animation: pulse 0.9s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 4px 0 rgba(74,63,53,0.15); }
+    50% { box-shadow: 0 4px 0 rgba(74,63,53,0.15), 0 0 0 6px rgba(255,255,255,0.4); }
+  }
+
+  .back-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 30px;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+  .back-word {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: white;
+  }
+  .back-pos {
+    display: inline-block;
+    background: rgba(255,255,255,0.35);
+    color: white;
+    font-weight: 800;
+    font-size: 12px;
+    padding: 3px 11px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    width: fit-content;
+  }
+  .back-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .back-block {
+    background: rgba(255,255,255,0.9);
+    border-radius: 16px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .back-block-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .back-block-text {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .back-block.zh .back-block-text {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--coral-deep);
+  }
+  .back-block.example .back-block-text { font-style: italic; }
+  .back-block.example-zh .back-block-text { color: var(--ink); }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .ctrl-btn {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    border: none;
+    border-radius: 18px;
+    padding: 14px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 rgba(74,63,53,0.15);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    color: white;
+  }
+  .ctrl-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(74,63,53,0.15); }
+  .ctrl-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .ctrl-prev { background: var(--sky); }
+  .ctrl-next { background: var(--coral); }
+  .ctrl-mastered { background: var(--mint); }
+  .ctrl-shuffle { background: var(--lav); }
+  .ctrl-mastered.is-on { background: #2E9C8C; }
+
+  .footer-note {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .progress-fill, .ctrl-btn, .speak-btn { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="app-title">🌟 單字探險卡</div>
+  <div class="app-sub">點卡片翻面 · 按 🔊 聽發音</div>
+
+  <div class="progress-row">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">1 / 10</div>
+  </div>
+  <div class="mastered-pill">✅ 已掌握 <span id="masteredCount">0</span> / <span id="totalCount">10</span></div>
+
+  <div class="card-wrap">
+    <div class="card" id="card">
+      <div class="card-face card-front" id="cardFront">
+        <div class="card-index-badge" id="indexBadgeFront"></div>
+        <div class="mastered-badge" id="masteredBadgeFront" style="display:none;">✓</div>
+        <div class="front-word" id="frontWord"></div>
+        <div class="front-pos" id="frontPos"></div>
+        <button class="speak-btn" id="speakFrontBtn" type="button">🔊 播放發音</button>
+        <div class="front-hint">👆 點卡片看解釋</div>
+      </div>
+      <div class="card-face card-back" id="cardBack">
+        <div class="card-index-badge" id="indexBadgeBack"></div>
+        <div class="mastered-badge" id="masteredBadgeBack" style="display:none;">✓</div>
+        <div class="back-top">
+          <div>
+            <div class="back-pos" id="backPos"></div>
+            <div class="back-word" id="backWord"></div>
+          </div>
+          <button class="speak-btn" id="speakBackBtn" type="button">🔊 播放</button>
+        </div>
+        <div class="back-scroll">
+          <div class="back-block">
+            <div class="back-block-label">DEFINITION</div>
+            <div class="back-block-text" id="backDef"></div>
+          </div>
+          <div class="back-block zh">
+            <div class="back-block-label">中文意思</div>
+            <div class="back-block-text" id="backZh"></div>
+          </div>
+          <div class="back-block example">
+            <div class="back-block-label">EXAMPLE</div>
+            <div class="back-block-text" id="backExample"></div>
+          </div>
+          <div class="back-block example-zh">
+            <div class="back-block-label">例句中譯</div>
+            <div class="back-block-text" id="backExampleZh"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn ctrl-prev" id="prevBtn" type="button">⬅️ 上一張</button>
+    <button class="ctrl-btn ctrl-next" id="nextBtn" type="button">下一張 ➡️</button>
+    <button class="ctrl-btn ctrl-mastered" id="masteredBtn" type="button">⭐ 標記已掌握</button>
+    <button class="ctrl-btn ctrl-shuffle" id="shuffleBtn" type="button">🔀 隨機打亂</button>
+  </div>
+  <div class="footer-note">共 10 個單字 · 進度與掌握狀態不會儲存，重新整理會重置</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  const words = [
+    {
+      word: "impulse", pos: "n.",
+      def: "An impulse is the desire to do something.",
+      zh: "衝動；一時的念頭",
+      example: "Our impulse was to take every puppy in the pound.",
+      exampleZh: "我們的衝動就是想把收容所裡的每隻小狗都帶走。",
+      colorA: "#FF9A76", colorB: "#FF6B5B"
+    },
+    {
+      word: "passionate", pos: "adj.",
+      def: "To have a passionate feeling is to have strong emotions about it.",
+      zh: "熱情的；充滿熱情的",
+      example: "The nurse is passionate about her work in the hospital.",
+      exampleZh: "這位護理師對她在醫院的工作充滿熱情。",
+      colorA: "#6FD6C9", colorB: "#3FBFAE"
+    },
+    {
+      word: "eccentric", pos: "adj.",
+      def: "Someone who is eccentric is odd or strange.",
+      zh: "古怪的；異於常人的",
+      example: "The eccentric inventor was always working on crazy projects.",
+      exampleZh: "這位古怪的發明家總是在進行瘋狂的計畫。",
+      colorA: "#A594F0", colorB: "#8C7AE6"
+    },
+    {
+      word: "prototype", pos: "n.",
+      def: "A prototype is a model created to test something before creating it in its final form.",
+      zh: "原型；雛型",
+      example: "We built a prototype to show what the real robot would look like.",
+      exampleZh: "我們製作了一個原型，來展示真正的機器人會是什麼樣子。",
+      colorA: "#6FC3EA", colorB: "#4FA8D8"
+    },
+    {
+      word: "acceleration", pos: "n.",
+      def: "Acceleration is the act of moving faster.",
+      zh: "加速；加速度",
+      example: "The acceleration of the car around the curve caused it to run off the road.",
+      exampleZh: "汽車在彎道加速導致它衝出了道路。",
+      colorA: "#FFCE73", colorB: "#FFC24B"
+    },
+    {
+      word: "distinguished", pos: "adj.",
+      def: "A distinguished group is known and respected for its excellence.",
+      zh: "卓越的；受人尊敬的",
+      example: "The distinguished inventor won an award for excellence in airplane design.",
+      exampleZh: "這位卓越的發明家因飛機設計的傑出表現而獲獎。",
+      colorA: "#FF8FA3", colorB: "#FF6B5B"
+    },
+    {
+      word: "evidently", pos: "adv.",
+      def: "If something happened evidently, it happened for an obvious reason.",
+      zh: "顯然地；明顯地",
+      example: "Evidently, schools also have rules about having cell phones in class because students must study.",
+      exampleZh: "顯然，學校對於上課使用手機也有規定，因為學生必須專心讀書。",
+      colorA: "#7ED4C7", colorB: "#3FBFAE"
+    },
+    {
+      word: "conceived", pos: "v.",
+      def: "If you thought of the idea to create something, you conceived it.",
+      zh: "構思；想出（主意）",
+      example: "The clever student conceived an idea for a safer bicycle helmet.",
+      exampleZh: "這位聰明的學生構思出一個更安全的自行車安全帽的點子。",
+      colorA: "#B0A2F5", colorB: "#8C7AE6"
+    },
+    {
+      word: "contribution", pos: "n.",
+      def: "A person who helps to make something has made a contribution to that job.",
+      zh: "貢獻",
+      example: "The airplane was an important contribution to long-distance travel.",
+      exampleZh: "飛機對長途旅行來說是一項重要的貢獻。",
+      colorA: "#7AC2EA", colorB: "#4FA8D8"
+    },
+    {
+      word: "circumstances", pos: "n.",
+      def: "The way an event happened or the causes of it are its circumstances.",
+      zh: "情況；境況",
+      example: "Because of the circumstances the picnic was cancelled.",
+      exampleZh: "由於當時的情況，野餐被取消了。",
+      colorA: "#FFB25E", colorB: "#FFC24B"
+    }
+  ];
+
+  let order = words.map((_, i) => i);
+  let pos = 0;
+  let flipped = false;
+  let mastered = new Set();
+
+  const card = document.getElementById('card');
+  const cardFront = document.getElementById('cardFront');
+  const cardBack = document.getElementById('cardBack');
+  const frontWord = document.getElementById('frontWord');
+  const frontPos = document.getElementById('frontPos');
+  const backWord = document.getElementById('backWord');
+  const backPos = document.getElementById('backPos');
+  const backDef = document.getElementById('backDef');
+  const backZh = document.getElementById('backZh');
+  const backExample = document.getElementById('backExample');
+  const backExampleZh = document.getElementById('backExampleZh');
+  const indexBadgeFront = document.getElementById('indexBadgeFront');
+  const indexBadgeBack = document.getElementById('indexBadgeBack');
+  const masteredBadgeFront = document.getElementById('masteredBadgeFront');
+  const masteredBadgeBack = document.getElementById('masteredBadgeBack');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const masteredCountEl = document.getElementById('masteredCount');
+  const totalCountEl = document.getElementById('totalCount');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const masteredBtn = document.getElementById('masteredBtn');
+  const shuffleBtn = document.getElementById('shuffleBtn');
+  const speakFrontBtn = document.getElementById('speakFrontBtn');
+  const speakBackBtn = document.getElementById('speakBackBtn');
+  const toast = document.getElementById('toast');
+
+  totalCountEl.textContent = words.length;
+
+  function currentWord() {
+    return words[order[pos]];
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 1400);
+  }
+
+  function speak(text, btn) {
+    if (!('speechSynthesis' in window)) {
+      showToast('這個瀏覽器不支援語音朗讀 😢');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'en-US';
+    utter.rate = 0.92;
+    utter.pitch = 1.05;
+    if (btn) {
+      btn.classList.add('speaking');
+      utter.onend = () => btn.classList.remove('speaking');
+      utter.onerror = () => btn.classList.remove('speaking');
+    }
+    window.speechSynthesis.speak(utter);
+  }
+
+  function speakFront(auto) {
+    const w = currentWord();
+    speak(w.word, speakFrontBtn);
+  }
+
+  function speakBack() {
+    const w = currentWord();
+    speak(w.word + ". " + w.def, speakBackBtn);
+  }
+
+  function render(autoSpeak) {
+    const w = currentWord();
+    const globalIdx = order[pos];
+
+    frontWord.textContent = w.word;
+    frontPos.textContent = w.pos;
+    backWord.textContent = w.word;
+    backPos.textContent = w.pos;
+    backDef.textContent = w.def;
+    backZh.textContent = w.zh;
+    backExample.textContent = '"' + w.example + '"';
+    backExampleZh.textContent = w.exampleZh;
+
+    cardFront.style.setProperty('--face-a', w.colorA);
+    cardFront.style.setProperty('--face-b', w.colorB);
+    cardBack.style.setProperty('--face-a', w.colorA);
+    cardBack.style.setProperty('--face-b', w.colorB);
+
+    indexBadgeFront.textContent = (pos + 1) + ' / ' + words.length;
+    indexBadgeBack.textContent = (pos + 1) + ' / ' + words.length;
+
+    const isMastered = mastered.has(globalIdx);
+    masteredBadgeFront.style.display = isMastered ? 'flex' : 'none';
+    masteredBadgeBack.style.display = isMastered ? 'flex' : 'none';
+    masteredBtn.textContent = isMastered ? '⭐ 已掌握！' : '⭐ 標記已掌握';
+    masteredBtn.classList.toggle('is-on', isMastered);
+
+    progressFill.style.width = ((pos + 1) / words.length * 100) + '%';
+    progressLabel.textContent = (pos + 1) + ' / ' + words.length;
+    masteredCountEl.textContent = mastered.size;
+
+    prevBtn.disabled = pos === 0;
+    nextBtn.disabled = pos === words.length - 1;
+
+    flipped = false;
+    card.classList.remove('flipped');
+
+    if (autoSpeak) {
+      setTimeout(() => speakFront(true), 200);
+    }
+  }
+
+  function goTo(newPos, autoSpeak) {
+    if (newPos < 0 || newPos >= words.length) return;
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    pos = newPos;
+    render(autoSpeak);
+  }
+
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.speak-btn')) return;
+    flipped = !flipped;
+    card.classList.toggle('flipped', flipped);
+    if (flipped) {
+      setTimeout(speakBack, 350);
+    }
+  });
+
+  speakFrontBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    speakFront(false);
+  });
+  speakBackBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    speakBack();
+  });
+
+  prevBtn.addEventListener('click', () => goTo(pos - 1, true));
+  nextBtn.addEventListener('click', () => goTo(pos + 1, true));
+
+  masteredBtn.addEventListener('click', () => {
+    const globalIdx = order[pos];
+    if (mastered.has(globalIdx)) {
+      mastered.delete(globalIdx);
+    } else {
+      mastered.add(globalIdx);
+      showToast('太棒了！你掌握了 "' + currentWord().word + '" 🎉');
+    }
+    render(false);
+  });
+
+  shuffleBtn.addEventListener('click', () => {
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    pos = 0;
+    showToast('已隨機打亂順序 🔀');
+    render(true);
+  });
+
+  // keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') goTo(pos + 1, true);
+    else if (e.key === 'ArrowLeft') goTo(pos - 1, true);
+    else if (e.key === ' ') {
+      e.preventDefault();
+      card.click();
+    }
+  });
+
+  render(false);
+})();
+</script>
+</body>
+</html>
